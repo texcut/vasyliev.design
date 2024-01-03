@@ -28,11 +28,18 @@
   a {
     all: unset;
   }
+  footer {
+    padding: 0px 0px 40px 40px;
+
+  }
+  footer:hover {
+    cursor: pointer;
+  }
   .subheader {
     font-family: "IBM Plex Mono", Arial, sans-serif;
     font-size: 48px;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.66);
+    color: rgb(107, 107, 107);
     line-height: 72px;
     max-width: 745px;
     padding-top: 30px;
@@ -100,6 +107,7 @@
     .subheader {
       grid-column:  -3 / -1;
       grid-row: 2 / 3;
+      max-width: 580px;
     } 
     .face {
       width: 50px;
@@ -121,10 +129,13 @@
       padding-top: 20px;
     }
     .container {
-      padding: 0px 10px 0px 10px;
+      padding: 0px;
     }
     header {
       padding: 40px 10px 40px 10px;
+    }
+    footer {
+      padding-left: 20px;
     }
   }
 
