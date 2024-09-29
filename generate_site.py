@@ -18,7 +18,9 @@ def get_access_token():
         }
     )
     response.raise_for_status()
-    return response.json()['access_token']
+    access_token = response.json()['access_token']
+    print("Access Token:", access_token)  # Add this line
+    return access_token
 
 def get_album_photos(access_token):
     headers = {'Authorization': f'Bearer {access_token}'}
@@ -72,7 +74,7 @@ def main():
     photos = get_album_photos(access_token)
     html_content = generate_html(photos)
 
-    with open('index.html', 'w', encoding='utf-8') as f:
+    with open('palms.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
 
 if __name__ == '__main__':
