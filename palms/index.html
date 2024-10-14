@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Gallery - Palms</title>
+
+  <!-- Add Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif:wght@200;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding-top: 40px;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      background-color: #000000d8; 
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      box-shadow: 0 0px 5px rgba(0,0,0,0.08);
+      font-family: 'IBM Plex Serif', serif;
+      font-weight: 200;
+      font-size: 16px;
+      color: #ffffff;
+    }
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 1rem;
+      gap: 8px; /* Set gap between gallery items */
+    }
+    .gallery-item {
+      flex-grow: 1;
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+    }
+    .gallery-item img {
+      max-height: 100%;
+      min-width: 100%;
+      object-fit: cover;
+      vertical-align: bottom;
+      transition: opacity 0.3s ease-in-out;
+    }
+    .gallery-item .thumbnail {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      filter: blur(10px);
+    }
+    #load-more {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      color: black;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    /* Add this new rule to remove the focus outline */
+    .gallery-item img:focus {
+      outline: none;
+    }
+    
+    /* Optionally, add a custom focus style if needed for accessibility */
+    .gallery-item img:focus-visible {
+      outline: 2px solid #4CAF50;
+      outline-offset: 2px;
+    }
+
+    /* Styles for the popup */
+    .popup {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.9);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .popup img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar"> Palms project: &nbsp;&nbsp;🎞️ Fomapan 100/200/400 &nbsp;&nbsp;📷 Nikon FE/Canon AE-1</div>
+  <div id="gallery" class="gallery"></div>
+  <button id="load-more" style="display: none;">Load More</button>
+
+  <!-- Popup container -->
+  <div id="popup" class="popup">
+    <img id="popup-image" src="" alt="Full-size image">
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const gallery = document.getElementById("gallery");
+      const loadMoreBtn = document.getElementById("load-more");
+      let allImages = [];
+      let currentIndex = 0;
+      const imagesPerLoad = 15;
+
+      fetchPhotos();
+
+      function fetchPhotos() {
+        fetch('palms')
+          .then(response => response.text())
+          .then(text => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'text/html');
+            const files = Array.from(doc.querySelectorAll('a')).map(link => link.getAttribute('href'));
+            allImages = files.filter(file => file.match(/\.(jpg|jpeg|png|gif)$/i));
+            loadMoreImages();
+          })
+          .catch(error => console.error('Error fetching photos:', error));
+      }
+
+      function loadMoreImages() {
+        const fragment = document.createDocumentFragment();
+        const endIndex = Math.min(currentIndex + imagesPerLoad, allImages.length);
+
+        for (let i = currentIndex; i < endIndex; i++) {
+          const div = document.createElement('div');
+          div.className = 'gallery-item';
+          
+          // Create and add full-size image (no separate thumbnail)
+          const img = document.createElement('img');
+          img.src = allImages[i];
+          img.alt = "Palm Photo";
+          img.loading = "lazy";
+          div.appendChild(img);
+
+          // Add this click event listener to each image
+          img.addEventListener('click', () => {
+            console.log("Image clicked:", img.src);
+            showPopup(img.src);
+          });
+
+          fragment.appendChild(div);
+
+          img.onload = () => {
+            const aspectRatio = img.naturalWidth / img.naturalHeight;
+            div.style.flexBasis = `${aspectRatio * 200}px`;
+          };
+        }
+
+        gallery.appendChild(fragment);
+        currentIndex = endIndex;
+
+        if (currentIndex < allImages.length) {
+          loadMoreBtn.style.display = "block";
+        } else {
+          loadMoreBtn.style.display = "none";
+        }
+      }
+
+      loadMoreBtn.addEventListener("click", loadMoreImages);
+
+      // Infinite scroll
+      window.addEventListener('scroll', () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+          loadMoreImages();
+        }
+      });
+
+      const popup = document.getElementById("popup");
+      const popupImage = document.getElementById("popup-image");
+      let currentPopupIndex = 0;
+
+      // Update the showPopup function
+      function showPopup(imageSrc) {
+        popupImage.src = imageSrc;
+        popup.style.display = 'flex';
+        currentPopupIndex = allImages.indexOf(imageSrc);
+        document.addEventListener('keydown', handleKeyPress);
+      }
+
+      // Update the hidePopup function
+      function hidePopup() {
+        popup.style.display = 'none';
+        document.removeEventListener('keydown', handleKeyPress);
+      }
+
+      // Add this new function for keyboard navigation
+      function handleKeyPress(e) {
+        switch (e.key) {
+          case 'Escape':
+            hidePopup();
+            break;
+          case 'ArrowRight':
+            showNextImage();
+            break;
+          case 'ArrowLeft':
+            showPreviousImage();
+            break;
+        }
+      }
+
+      // Add these new functions for navigating images
+      function showNextImage() {
+        currentPopupIndex = (currentPopupIndex + 1) % allImages.length;
+        popupImage.src = allImages[currentPopupIndex];
+      }
+
+      function showPreviousImage() {
+        currentPopupIndex = (currentPopupIndex - 1 + allImages.length) % allImages.length;
+        popupImage.src = allImages[currentPopupIndex];
+      }
+
+      // Add event listeners for closing the popup
+      popup.addEventListener('click', hidePopup);
+      popupImage.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hidePopup();
+      });
+    });
+  </script>
+</body>
+</html>
