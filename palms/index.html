@@ -119,23 +119,93 @@
       let allImages = [];
       let currentIndex = 0;
       const imagesPerLoad = 15;
+      let imageConfig = null;
 
-      fetchPhotos();
+      fetchConfig();
 
-      function fetchPhotos() {
-        fetch('palms')
-          .then(response => response.text())
-          .then(text => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
-            const files = Array.from(doc.querySelectorAll('a')).map(link => link.getAttribute('href'));
-            allImages = files.filter(file => file.match(/\.(jpg|jpeg|png|gif)$/i));
-            loadMoreImages();
+      function fetchConfig() {
+        fetch('image.json')
+          .then(response => response.json())
+          .then(data => {
+            imageConfig = data;
+            updateImageList();
           })
-          .catch(error => console.error('Error fetching photos:', error));
+          .catch(error => console.error('Error fetching config:', error));
+      }
+
+      function updateImageList() {
+        findTotalImages().then(totalImages => {
+          imageConfig.totalImages = totalImages;
+          imageConfig.lastUpdated = Date.now();
+          
+          console.log('Updated image config:', imageConfig);
+          allImages = Array.from({ length: totalImages }, (_, i) => 
+            `${imageConfig.imageDirectory}${imageConfig.imagePattern.replace('{n}', i + 1)}`
+          );
+          loadMoreImages();
+        });
+      }
+
+      function findTotalImages() {
+        return new Promise((resolve) => {
+          let count = 0;
+          let consecutiveErrors = 0;
+          const maxConsecutiveErrors = 5;
+
+          function checkImage(index) {
+            const img = new Image();
+            const timeoutDuration = 5000; // 5 seconds timeout
+            let timeoutId;
+
+            const imageSrc = `${imageConfig.imageDirectory}${imageConfig.imagePattern.replace('{n}', index + 1)}`;
+            console.log(`Checking image: ${imageSrc}`);
+
+            img.onload = function() {
+              clearTimeout(timeoutId);
+              count++;
+              consecutiveErrors = 0;
+              console.log(`Image ${index + 1} loaded successfully`);
+              checkImage(index + 1);
+            };
+
+            img.onerror = function() {
+              clearTimeout(timeoutId);
+              consecutiveErrors++;
+              console.log(`Error loading image ${index + 1}`);
+              if (consecutiveErrors >= maxConsecutiveErrors) {
+                console.log(`Reached ${maxConsecutiveErrors} consecutive errors. Stopping.`);
+                resolve(count);
+              } else {
+                checkImage(index + 1);
+              }
+            };
+
+            timeoutId = setTimeout(() => {
+              img.src = ''; // Cancel the image request
+              consecutiveErrors++;
+              console.log(`Timeout loading image ${index + 1}`);
+              if (consecutiveErrors >= maxConsecutiveErrors) {
+                console.log(`Reached ${maxConsecutiveErrors} consecutive errors. Stopping.`);
+                resolve(count);
+              } else {
+                checkImage(index + 1);
+              }
+            }, timeoutDuration);
+
+            img.src = imageSrc;
+          }
+
+          checkImage(0);
+        });
       }
 
       function loadMoreImages() {
+        console.log('loadMoreImages called', currentIndex, allImages.length);
+        if (currentIndex >= allImages.length) {
+          loadMoreBtn.style.display = "none";
+          return;
+        }
+
         const fragment = document.createDocumentFragment();
         const endIndex = Math.min(currentIndex + imagesPerLoad, allImages.length);
 
@@ -143,14 +213,12 @@
           const div = document.createElement('div');
           div.className = 'gallery-item';
           
-          // Create and add full-size image (no separate thumbnail)
           const img = document.createElement('img');
           img.src = allImages[i];
           img.alt = "Palm Photo";
           img.loading = "lazy";
           div.appendChild(img);
 
-          // Add this click event listener to each image
           img.addEventListener('click', () => {
             console.log("Image clicked:", img.src);
             showPopup(img.src);
@@ -179,6 +247,7 @@
       // Infinite scroll
       window.addEventListener('scroll', () => {
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+          console.log('Scroll trigger reached');
           loadMoreImages();
         }
       });
