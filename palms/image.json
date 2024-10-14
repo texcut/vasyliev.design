@@ -1,0 +1,5 @@
+{
+  "totalImages": 400,
+  "imagePattern": "{n}.jpg",
+  "imageRange": [1, 400]
+}
