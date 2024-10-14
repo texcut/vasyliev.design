@@ -1,5 +1,5 @@
 {
-  "totalImages": "auto",
+  "totalImages": 275,
   "imagePattern": "{n}.jpg",
   "imageDirectory": "palms/",
   "updateInterval": 3600,
