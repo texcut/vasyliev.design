@@ -109,7 +109,7 @@
 
   <!-- Popup container -->
   <div id="popup" class="popup">
-    <img id="popup-image" src="" alt="Full-size image">
+    <img id="popup-image" src="" alt="Untitled">
   </div>
 
   <script>
@@ -117,8 +117,8 @@
       const gallery = document.getElementById("gallery");
       const loadMoreBtn = document.getElementById("load-more");
       let allImages = [];
-      let currentIndex = 1;
-      const imagesPerLoad = 15;
+      let currentIndex = 0;
+      const imagesPerLoad = 30;
       let imageConfig = null;
 
       fetchConfig();
