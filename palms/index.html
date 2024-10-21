@@ -66,7 +66,8 @@
       min-width: 100%;
       object-fit: cover;
       vertical-align: bottom;
-      transition: opacity 0.3s ease-in-out;
+      transition: opacity 0.5s ease-in-out;
+      opacity: 0;
     }
     .gallery-item .thumbnail {
       position: absolute;
@@ -75,6 +76,14 @@
       width: 100%;
       height: 100%;
       filter: blur(10px);
+    }
+    .gallery-item .placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
     }
     #load-more {
       display: block;
@@ -237,26 +246,25 @@
         const endIndex = Math.min(currentIndex + imagesPerLoad, allImages.length);
 
         for (let i = currentIndex; i < endIndex; i++) {
-          const div = document.createElement('div');
-          div.className = 'gallery-item';
-          
-          const img = document.createElement('img');
-          img.src = allImages[i];
-          img.alt = "Palm Photo";
-          img.loading = "lazy";
-          div.appendChild(img);
+          if (allImages[i] && typeof allImages[i] === 'string') {
+            const div = document.createElement('div');
+            div.className = 'gallery-item';
+            
+            const img = document.createElement('img');
+            img.dataset.src = allImages[i];
+            img.alt = "Palm Photo";
+            img.loading = "lazy";
+            div.appendChild(img);
 
-          img.addEventListener('click', () => {
-            console.log("Image clicked:", img.src);
-            showPopup(img.src);
-          });
+            img.addEventListener('click', () => {
+              console.log("Image clicked:", img.src);
+              showPopup(img.src);
+            });
 
-          fragment.appendChild(div);
-
-          img.onload = () => {
-            const aspectRatio = img.naturalWidth / img.naturalHeight;
-            div.style.flexBasis = `${aspectRatio * 200}px`;
-          };
+            fragment.appendChild(div);
+          } else {
+            console.warn(`Invalid image source for index ${i}:`, allImages[i]);
+          }
         }
 
         gallery.appendChild(fragment);
@@ -268,13 +276,60 @@
           loadMoreBtn.style.display = "none";
         }
 
-        // Check if we need to load more images
-        checkIfMoreImagesNeeded();
+        loadVisibleImages();
       }
 
+      function loadVisibleImages() {
+        const images = document.querySelectorAll('.gallery-item img[data-src]');
+        const options = {
+          root: null,
+          rootMargin: '0px',
+          threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const img = entry.target;
+              const src = img.dataset.src;
+              
+              if (!src) {
+                console.warn('Image source is undefined:', img);
+                img.closest('.gallery-item').remove(); // Remove the entire gallery item
+                observer.unobserve(img);
+                return;
+              }
+
+              img.src = src;
+              img.removeAttribute('data-src');
+              observer.unobserve(img);
+
+              img.onload = () => {
+                const div = img.closest('.gallery-item');
+                const aspectRatio = img.naturalWidth / img.naturalHeight;
+                div.style.flexBasis = `${Math.round(aspectRatio * 200)}px`;
+                img.style.opacity = '1';
+              };
+
+              img.onerror = () => {
+                console.error('Failed to load image:', src);
+                img.closest('.gallery-item').remove(); // Remove the entire gallery item
+              };
+            }
+          });
+        }, options);
+
+        images.forEach(img => observer.observe(img));
+      }
+
+      // Add this new function
       function checkIfMoreImagesNeeded() {
-        if (document.body.offsetHeight <= window.innerHeight && currentIndex < allImages.length) {
-          loadMoreImages();
+        const lastImage = gallery.lastElementChild;
+        if (lastImage) {
+          const lastImageRect = lastImage.getBoundingClientRect();
+          if (lastImageRect.bottom < window.innerHeight) {
+            loadMoreImages();
+          }
         }
       }
 
